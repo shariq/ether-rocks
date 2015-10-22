@@ -37,5 +37,7 @@ Backend
 Responsible for conversion and sending BTC to user
 
 - Monitors the forward address for new ETH from the smart contract
-- Upon new incoming transaction, uses Poloniex to dump all received ETH for BTC
-- Sends the received BTC (minus 1%) to the address listed in the smart contract database
+- Forward the ETH to Poloniex
+- Sell the ETH on Poloniex for BTC
+- Withdraw the BTC from Poloniex to our BTC address
+- Forward 99% of what we received to the user's BTC address
