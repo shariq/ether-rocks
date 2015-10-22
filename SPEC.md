@@ -38,6 +38,7 @@ Responsible for conversion and sending BTC to user
 
 - Monitors the forward address for new ETH from the smart contract
 - Forward the ETH to Poloniex
+
 - Sell the ETH on Poloniex for BTC
 - Withdraw the BTC from Poloniex to our BTC address
 - Forward 99% of what we received to the user's BTC address
