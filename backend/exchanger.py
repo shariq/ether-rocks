@@ -3,12 +3,6 @@ from sets import Set
 from enum import Enum
 import time, pickledb, threading, json
 
-#TODO consider deletion
-class ProcessingStatus(Enum):
-	processing = 1
-	failed = 2
-	passed = 3
-
 def forever(func, seconds = 1):
     def helper():
         while True:
@@ -24,28 +18,37 @@ def forever(func, seconds = 1):
 processedDeposits = pickledb.load('processedDeposits.db', False)
 forever(processedDeposits.dump)
 
-# deposit address 
+# deposit => order number
 processingDeposits = pickledb.load('processingDeposits.db', False)
 forever(processingDeposits.dump)
+
+# order number => deposits
+# Works with processing deposits for 2 way mapping of: order number <=> deposits
+#TODO implement 2 way mapping. Maybe wrap both in class
+processingTrades = pickledb.load('processingTrades.db', False)
+forever(processingTrades.dump)
 
 apiKey = "FB8EJWXG-L75UYGW7-E6U482VD-N5R87R0C"
 secret = "3f709d585cf4c64ac4544e74b8d78d616119e2e522783bfe8460468c7db2208d54d1560df6e16e3a960dd52283331790672670826add166d06d45a640c3ff957"
 poloniexAcc = poloniex(apiKey, secret)
 
 
-
-
 prehistory = {}
 
 #TODO ask shariq did you say to only process 1 deposit at a time?
 def processDeposit(deposit):
+
+	depositID = generateDepositID(deposit)
+
+	#rate is based on BTC per ETH
 	rate = 10000000 #TODO change (get normal market rate or slightly below?)
 
 	ethAmount = deposit["amount"]
 
-	coinsToBuy = 1
-	orderNum = poloniexAcc.sell("ETH_BTC", rate, coinsToBuy)
-	
+	#Calculate BTC to buy given ether to buy
+	btcToBuy = 0
+	order = poloniexAcc.sell("BTC_ETH", rate, btcToBuy)
+
 	#Safety: Checking if I have enough ether to sell
 	#If this under then there is an error
 	balances = poloniexAcc.returnBalances()
@@ -53,19 +56,28 @@ def processDeposit(deposit):
 	if(ethBalance < ethAmount):
 		raise error("Error: trying to sell more ether then we have this state should never be reached")
 
-	if orderNum:
-		processingDeposits.set(generateDepositID(deposit), ProcessingStatus.processing)
+	if order:
+		orderNum = order["orderNumber"]
+		print "Placed order for depositID: " + depositID + " poloniex order number: " + str(orderNum)
+		processingDeposits.set(depositID, str(orderNum))
 		return True
 	else:
-		print("Unable to sell order for some reason: " + deposit)
+		print("Unable to place poloniex order for: " + str(deposit))
 		return False
 	#TODO create another thread to monitor processing threads
 
 #If any orders are still processing then check their status
 #If finished forward to corresponding address
 def checkProcessingOrders():
-	tradeHistory = poloniexAcc.returnTradeHistory("ETH_BTC")
+	tradeHistory = poloniexAcc.returnTradeHistory("BTC_ETH")
 	for trades in tradeHistory:
+
+		orderNum = trades["orderNum"]
+		fee = trades["fee"] #fee in btc
+		amount = trades["amount"]
+
+		#Find a key with a value set to orderNum or restructure deposits
+
 		done = False #TODO see if trade is finished
 		if done:
 			processingDeposits.remove(generateDepositID(deposit))
@@ -94,5 +106,5 @@ while True:
 				processDeposit(deposit)
 
 	checkProcessingOrders()
-	prehistory = history
-	sleep(1)
+	prevDepositHistory = depositHistory
+	time.sleep(1)
