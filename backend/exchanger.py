@@ -13,6 +13,7 @@ def forever(func, seconds = 1):
     t.daemon = True
     t.start()
 
+# deposit => order number
 processedDeposits = pickledb.load('processedDeposits.db', False)
 forever(processedDeposits.dump)
 
@@ -59,30 +60,36 @@ def processDeposit(deposit):
 
 	depositID = generateDepositID(deposit)
 	ethAmount = float(deposit["amount"])
-	print "Processing deposit: " depositID + " ether: " + str(ethAmount)
+	print "Processing deposit: \'" + depositID + "\' ether: " + str(ethAmount)
 
-	checkBalance(ether)
+	checkBalance(ethAmount)
 
 	btcPerEth = getBtcPerEth()
 
-	print "Selling " + ethAmount + " ether at " + str(BtcPerEth) + " bitcoins per ether" 
-	order = poloniexAcc.sell("BTC_ETH", BtcPerEth, ethAmount)
+	print "Selling " + str(ethAmount) + " ether at " + str(btcPerEth) + " bitcoins per ether" 
+	order = poloniexAcc.sell("BTC_ETH", btcPerEth, ethAmount)
 
-	if order:
+	print "order: " + str(order)
+
+	if order and "error" not in order: 	#If order is returned and there is no error
 		orderNum = order["orderNumber"]
 		print "Placed order for depositID: " + depositID + " poloniex order number: " + str(orderNum)
 		processingDeposits.set(depositID, str(orderNum))
-		processingDeposits.set(str(orderNum), depositID)
+		processingTrades.set(str(orderNum), depositID)
 		return True
 	else:
-		print("Unable to place poloniex order for: " + str(deposit))
+		print("Unable to place poloniex order for: " + str(deposit) + " order info: " + str(order))
 		return False
 	#TODO create another thread to monitor processing threads
 
 #If any orders are still processing then check their status
 #If finished forward to corresponding address
 def checkProcessingOrders():
+
+	#print "Checking processing orders"
+	
 	tradeHistory = poloniexAcc.returnTradeHistory("BTC_ETH")
+	
 	for trades in tradeHistory:
 
 		orderNum = trades["orderNumber"]
@@ -90,13 +97,12 @@ def checkProcessingOrders():
 		amount = trades["amount"] #amount in btc
 
 		#Find a key with a value set to orderNum or restructure deposits
-
-		done = False #TODO see if trade is finished
-		if done:
-			processingDeposits.remove(generateDepositID(deposit))
-			processingTrades.remove(str(orderNum))
+		if str(orderNum) in processingTrades.db:
+			print "Order number finished: " + orderNum
+			processingDeposits.rem(generateDepositID(deposit))
+			processingTrades.rem(str(orderNum))
 			#TODO set value to something useful. 
-			processedDeposits.set(generateDepositID(deposit), True)
+			processedDeposits.set(generateDepositID(deposit), str(orderNum))
 
 #Generate a "unique" id by using a timestamp and amount
 #Note probably not actually unique
@@ -118,7 +124,7 @@ while True:
 		depositId = generateDepositID(deposit)
 		#Some deposits are pending or whateves ignore them
 		if deposit["status"] == "COMPLETE" and deposit["currency"] == "ETH":
-			if not processingDeposits.get(depositId) && not processedDeposits.get(depositId):
+			if not processingDeposits.get(depositId) and not processedDeposits.get(depositId):
 				processDeposit(deposit)
 
 	checkProcessingOrders()
