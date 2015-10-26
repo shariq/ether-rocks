@@ -1,6 +1,11 @@
 from poloniex import poloniex
 import time, pickledb, threading, json
 
+#TODO realized too late that I could just convert ether as I receive them. 
+#I don't have to do this on each individual deposit
+
+#TODO maybe add functions to check on failing bitcoin transfers to users
+
 def forever(func, seconds = 1):
     def helper():
         while True:
@@ -35,6 +40,8 @@ poloniexAcc = poloniex(apiKey, secret)
 
 prehistory = {}
 
+COMMISION = 0.03
+
 #Check if I have enough ether to sell
 #raise error if trying to sell more eth than we have
 def checkBalance(ethAmount):
@@ -60,28 +67,53 @@ def processDeposit(deposit):
 
 	depositID = generateDepositID(deposit)
 	ethAmount = float(deposit["amount"])
+
+	#TODO verify if ethAmount is over minimum
+
 	print "Processing deposit: \'" + depositID + "\' ether: " + str(ethAmount)
 
-	checkBalance(ethAmount)
+	if depositID not in processedDeposits.db:
+		checkBalance(ethAmount)
 
-	btcPerEth = getBtcPerEth()
+		btcPerEth = getBtcPerEth()
 
-	print "Selling " + str(ethAmount) + " ether at " + str(btcPerEth) + " bitcoins per ether" 
-	order = poloniexAcc.sell("BTC_ETH", btcPerEth, ethAmount)
+		print "Selling " + str(ethAmount) + " ether at " + str(btcPerEth) + " bitcoins per ether" 
+		order = poloniexAcc.sell("BTC_ETH", btcPerEth, ethAmount)
 
-	print "order: " + str(order)
+		print "order: " + str(order)
 
-	if order and "error" not in order: 	#If order is returned and there is no error
-		orderNum = order["orderNumber"]
-		print "Placed order for depositID: " + depositID + " poloniex order number: " + str(orderNum)
-		processingDeposits.set(depositID, str(orderNum))
-		processingTrades.set(str(orderNum), depositID)
-		return True
+		if order and "error" not in order: 	#If order is returned and there is no error
+			orderNum = order["orderNumber"]
+			print "Placed order for depositID: " + depositID + " poloniex order number: " + str(orderNum)
+			processingDeposits.set(depositID, str(orderNum))
+			processingTrades.set(str(orderNum), depositID)
+			return True
+		else:
+			print("Unable to place poloniex order for: " + str(deposit) + " order info: " + str(order))
+			return False
 	else:
-		print("Unable to place poloniex order for: " + str(deposit) + " order info: " + str(order))
-		return False
-	#TODO create another thread to monitor processing threads
+		print "Already processed deposit: " + depositID
 
+def sendUserBTC(tradeAmount, btcAddr):
+
+	#Take off commision from actual trade amount
+	profit = float(tradeAmount) * COMMISION
+	usersAmount = float(tradeAmount) - profit
+
+	response = poloniexAcc.withdraw("BTC", usersAmount, btcAddr)
+
+	#TODO add additional check on response
+	if response and "error" not in response:
+		print "Successfully transfered " + str(usersAmount) + " bitcoins to: " + btcAddr
+		print "Actual trade amount: " + str(tradeAmount) + " profit: " + str(profit)
+	else:
+		print "Could not transfer " + str(usersAmount) + " bitcoins to: " + btcAddr 
+		if "error" in response:
+			print response["error"]
+
+
+
+#TODO create another thread to monitor processing trades
 #If any orders are still processing then check their status
 #If finished forward to corresponding address
 def checkProcessingOrders():
@@ -96,13 +128,19 @@ def checkProcessingOrders():
 		fee = trades["fee"] #fees in btc
 		amount = trades["amount"] #amount in btc
 
-		#Find a key with a value set to orderNum or restructure deposits
+		#Only look at trades that are still proceessing
 		if str(orderNum) in processingTrades.db:
-			print "Order number finished: " + orderNum
-			processingDeposits.rem(generateDepositID(deposit))
+			depositID = processingTrades.get(str(orderNum))
+			print "Order number finished: " + orderNum + " depositID: " + depositID
 			processingTrades.rem(str(orderNum))
+			processingDeposits.rem(depositID)
 			#TODO set value to something useful. 
-			processedDeposits.set(generateDepositID(deposit), str(orderNum))
+			processedDeposits.set(depositID, str(orderNum))
+
+			#Send user converted bitcoins
+			userAddress = "TODO" #TODO
+			sendUserBTC(amount, userAddress)
+
 
 #Generate a "unique" id by using a timestamp and amount
 #Note probably not actually unique
