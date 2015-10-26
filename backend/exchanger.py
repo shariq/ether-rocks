@@ -32,10 +32,9 @@ forever(processingDeposits.dump)
 processingTrades = pickledb.load('processingTrades.db', False)
 forever(processingTrades.dump)
 
-#connect to poloniex
-#TODO create new apiKey or secret and load from file instead of hardcoding. Don't put file in repo.
-apiKey = "FB8EJWXG-L75UYGW7-E6U482VD-N5R87R0C"
-secret = "3f709d585cf4c64ac4544e74b8d78d616119e2e522783bfe8460468c7db2208d54d1560df6e16e3a960dd52283331790672670826add166d06d45a640c3ff957"
+#connect to poloniex using key and secret file
+apiKey = open('poloniexapi.key', 'r').read()
+secret = open('poloniexapi.secret', 'r').read()
 poloniexAcc = poloniex(apiKey, secret)
 
 prehistory = {}
@@ -94,11 +93,14 @@ def processDeposit(deposit):
 	else:
 		print "Already processed deposit: " + depositID
 
+#Send a user bitcoins minus commision
 def sendUserBTC(tradeAmount, btcAddr):
 
 	#Take off commision from actual trade amount
 	profit = float(tradeAmount) * COMMISION
 	usersAmount = float(tradeAmount) - profit
+
+	#TODO add additional safety check to make sure I have enough bitcoins to transfer just in case
 
 	response = poloniexAcc.withdraw("BTC", usersAmount, btcAddr)
 
@@ -107,6 +109,7 @@ def sendUserBTC(tradeAmount, btcAddr):
 		print "Successfully transfered " + str(usersAmount) + " bitcoins to: " + btcAddr
 		print "Actual trade amount: " + str(tradeAmount) + " profit: " + str(profit)
 	else:
+		#This might be important to log in a different file. As failed bitcoin transfers
 		print "Could not transfer " + str(usersAmount) + " bitcoins to: " + btcAddr 
 		if "error" in response:
 			print response["error"]
