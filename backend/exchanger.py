@@ -132,12 +132,14 @@ def checkProcessingOrders():
 
 		orderNum = trades["orderNumber"]
 		fee = trades["fee"] #fees in btc
-		amount = trades["amount"] #amount in btc
+		ethAmount = trades["amount"]
+		btcAmount = trades["total"] 
 
 		#Only look at trades that are still proceessing
 		if str(orderNum) in processingTrades.db:
 			depositID = processingTrades.get(str(orderNum))
-			logging.info("Order number finished: " + orderNum + " depositID: " + depositID)
+			logging.info("Order number finished: " + orderNum + " " + str(ethAmount) 
+				+ " ether traded for " + str(btcAmount) + " BTC. depositID: " + depositID)
 			processingTrades.rem(str(orderNum))
 			processingDeposits.rem(depositID)
 
@@ -145,7 +147,7 @@ def checkProcessingOrders():
 
 			#Send user converted bitcoins
 			userAddress = "TODO" #TODO
-			sendUserBTC(amount, userAddress)
+			sendUserBTC(btcAmount, userAddress)
 
 
 #Generate a "unique" id by using a timestamp and amount
