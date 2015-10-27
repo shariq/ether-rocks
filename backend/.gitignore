@@ -1,3 +1,5 @@
 poloniexapi.key
 poloniexapi.secret
 *.log
+*.pyc
+*.db
