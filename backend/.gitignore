@@ -1,2 +1,3 @@
 poloniexapi.key
 poloniexapi.secret
+*.log

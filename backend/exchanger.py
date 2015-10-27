@@ -1,10 +1,13 @@
 from poloniex import poloniex
-import time, pickledb, threading, json
+import time, pickledb, threading, json, logging, sys
+
+COMMISION = 0.03
 
 #TODO realized too late that I could just convert ether as I receive them. 
 #I don't have to do this on each individual deposit
 
-#TODO maybe add functions to check on failing bitcoin transfers to users
+#TODO replace printing with logging
+logging.basicConfig(filename='exchanger.log',level=logging.INFO)
 
 def forever(func, seconds = 1):
     def helper():
@@ -37,10 +40,6 @@ apiKey = open('poloniexapi.key', 'r').read()
 secret = open('poloniexapi.secret', 'r').read()
 poloniexAcc = poloniex(apiKey, secret)
 
-prehistory = {}
-
-COMMISION = 0.03
-
 #Check if I have enough ether to sell
 #raise error if trying to sell more eth than we have
 def checkBalance(ethAmount):
@@ -54,7 +53,7 @@ def checkBalance(ethAmount):
 #Get rate of bitcoins per ethereum
 #rate is based on BTC per ETH
 #Calculating it by getting the average of the lowest 24 hour score and last price
-#TODO make sure if this is fine with shariq
+#TODO make sure if this is fine with shariq. It still does sell fast.
 def getBtcPerEth():
 	ticker = poloniexAcc.returnTicker()
 	btc_eth = ticker["BTC_ETH"]
@@ -67,31 +66,31 @@ def processDeposit(deposit):
 	depositID = generateDepositID(deposit)
 	ethAmount = float(deposit["amount"])
 
-	#TODO verify if ethAmount is over minimum
+	#TODO verify if ethAmount is over minimum. If it is should we return it or just keep it?
 
-	print "Processing deposit: \'" + depositID + "\' ether: " + str(ethAmount)
+	logging.info("Processing deposit: \'" + depositID + "\' ether: " + str(ethAmount))
 
 	if depositID not in processedDeposits.db:
 		checkBalance(ethAmount)
 
 		btcPerEth = getBtcPerEth()
 
-		print "Selling " + str(ethAmount) + " ether at " + str(btcPerEth) + " bitcoins per ether" 
+		logging.info("Selling " + str(ethAmount) + " ether at " + str(btcPerEth) + " bitcoins per ether")
 		order = poloniexAcc.sell("BTC_ETH", btcPerEth, ethAmount)
 
-		print "order: " + str(order)
+		logging.info("order: " + str(order))
 
 		if order and "error" not in order: 	#If order is returned and there is no error
 			orderNum = order["orderNumber"]
-			print "Placed order for depositID: " + depositID + " poloniex order number: " + str(orderNum)
+			logging.info("Placed order for depositID: " + depositID + " poloniex order number: " + str(orderNum))
 			processingDeposits.set(depositID, str(orderNum))
 			processingTrades.set(str(orderNum), depositID)
 			return True
 		else:
-			print("Unable to place poloniex order for: " + str(deposit) + " order info: " + str(order))
+			logging.warning("Unable to place poloniex order for: " + str(deposit) + " order info: " + str(order))
 			return False
 	else:
-		print "Already processed deposit: " + depositID
+		logging.debug("Already processed deposit: " + depositID)
 
 #Send a user bitcoins minus commision
 def sendUserBTC(tradeAmount, btcAddr):
@@ -100,19 +99,23 @@ def sendUserBTC(tradeAmount, btcAddr):
 	profit = float(tradeAmount) * COMMISION
 	usersAmount = float(tradeAmount) - profit
 
-	#TODO add additional safety check to make sure I have enough bitcoins to transfer just in case
-
 	response = poloniexAcc.withdraw("BTC", usersAmount, btcAddr)
 
-	#TODO add additional check on response
 	if response and "error" not in response:
-		print "Successfully transfered " + str(usersAmount) + " bitcoins to: " + btcAddr
-		print "Actual trade amount: " + str(tradeAmount) + " profit: " + str(profit)
+		logging.info("Successfully transfered " + str(usersAmount) + " bitcoins to: " + btcAddr)
+		logging.info("Actual trade amount: " + str(tradeAmount) + " profit: " + str(profit))
 	else:
-		#This might be important to log in a different file. As failed bitcoin transfers
-		print "Could not transfer " + str(usersAmount) + " bitcoins to: " + btcAddr 
+		errMsg = "Could not transfer " + str(usersAmount) + " bitcoins to: " + btcAddr
+
 		if "error" in response:
-			print response["error"]
+			errMsg += "\n response: " + str(response["error"])
+			if "Not enough BTC" in response["error"]:
+				logging.critical(errMsg)
+				#Exit if not enough bitcoins. Should never reach this state.
+				#Maybe someone is trying to exploit us
+				sys.exit(errMsg)
+
+		logging.warning(errMsg)
 
 
 
@@ -134,10 +137,10 @@ def checkProcessingOrders():
 		#Only look at trades that are still proceessing
 		if str(orderNum) in processingTrades.db:
 			depositID = processingTrades.get(str(orderNum))
-			print "Order number finished: " + orderNum + " depositID: " + depositID
+			logging.info("Order number finished: " + orderNum + " depositID: " + depositID)
 			processingTrades.rem(str(orderNum))
 			processingDeposits.rem(depositID)
-			#TODO set value to something useful. 
+
 			processedDeposits.set(depositID, str(orderNum))
 
 			#Send user converted bitcoins
@@ -150,6 +153,8 @@ def checkProcessingOrders():
 def generateDepositID(deposit):
 	return "timestamp:" + str(deposit["timestamp"]) + " amount:" + deposit["amount"]
 
+prevDepositHistory = {}
+
 while True:
 
 	#TODO could use a timed wait until depositHistory != previousHistory to 
@@ -157,10 +162,10 @@ while True:
 	
 	#Get withdrawel and deposit history up to current time
 	currTime = str(time.time())
-	#TODO consider setting start time to a month ago or something like that
+	#TODO consider setting start time to a week ago or at some period of time to avoid unneeded work on old deposits
 	depositHistory = poloniexAcc.returnDepositsWithdrawals({"start": 0, "end": currTime})["deposits"]
 	
-	#For deposits not already
+	#For deposits not already traded
 	for deposit in depositHistory:
 		depositId = generateDepositID(deposit)
 		#Some deposits are pending or whateves ignore them
