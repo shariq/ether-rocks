@@ -52,9 +52,12 @@ We'll only know if if we try :-)
   <title>Turn your presale Ethereum wallet to Bitcoin</title>
   <meta name="description" content="Convert your Ethereum wallet into Bitcoin quickly online">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">
+  <!-- TODO getting error <link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css"> -->
   <link rel="stylesheet" href="css/normalize.css">
   <link rel="stylesheet" href="css/skeleton.css">
+  <script src="js/bundle.js"></script>
+  <script type="text/javascript" src="bower_components/crypto-js/crypto-js.js"></script>
+  <script type="text/javascript" src="js/scrypt.js"></script>
   <script type="text/javascript" src="js/jquery-2.1.4.min.js"></script>
   <script type="text/javascript" src="js/BigInt.js"></script>
   <script type="text/javascript" src="js/sha256.js"></script>
@@ -63,7 +66,7 @@ We'll only know if if we try :-)
   <script type="text/javascript" src="js/04_walletimport.js"></script>
   <script type="text/javascript" src="js/ethereumlol.js"></script>
   <!-- <script src="dist/keythereum.min.js" type="text/javascript"></script> -->
-  <!-- <script src="js/bundle.js"></script> -->
+  
 
   <link rel="icon" type="image/ico" href="images/favicon.ico">
 
@@ -90,7 +93,7 @@ We'll only know if if we try :-)
         <input type="password" id="password"><br>
         <!-- autoverify password field -->
         <input type="submit" id="submit_wallet"><br>
-        <div id="balance" style="color:rgb(30,30,200);">
+        <div class="btn" id="balance" style="color:rgb(30,30,200);">
         (waiting...)
         </div>
 <br>

@@ -120,7 +120,8 @@ function removeStatus() {
   status_element.innerHTML = '';
 }
 
-$('#submit_wallet').submit(function(event) {
+//TODO make this a submit instead
+$('#submit_wallet').click(function(event) {
   function successfulSubmission(message) {
     wallet_token = message;
     updateBalance('(success!)', 'rgb(30,200,30)');
@@ -141,14 +142,14 @@ $('#submit_wallet').submit(function(event) {
   // call corresponding method
 
   wallet_contents = document.getElementById('wallet').innerHTML;
-  wallet_password = document.getElementById('password').innerHTML
+  wallet_password = $("#password").val();
   
   console.log("Wallet password: " + wallet_password)
  
-  var privKey = getWalletFilePrivKey(wallet_contents,password);
+  var privKey = getWalletFilePrivKey(wallet_contents, wallet_password);
   console.log("private key: " + privKey);
 
-  
+
 
   return false;
 });
