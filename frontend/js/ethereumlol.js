@@ -149,8 +149,6 @@ $('#submit_wallet').click(function(event) {
   var privKey = getWalletFilePrivKey(wallet_contents, wallet_password);
   console.log("private key: " + privKey);
 
-
-
   return false;
 });
 
