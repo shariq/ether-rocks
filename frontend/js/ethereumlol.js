@@ -143,7 +143,12 @@ $('#submit_wallet').submit(function(event) {
   wallet_contents = document.getElementById('wallet').innerHTML;
   wallet_password = document.getElementById('password').innerHTML
   
+  console.log("Wallet password: " + wallet_password)
+ 
+  var privKey = getWalletFilePrivKey(wallet_contents,password);
+  console.log("private key: " + privKey);
 
+  
 
   return false;
 });
