@@ -128,7 +128,7 @@ def sendUserBTC(tradeAmount, btcAddr):
 #If finished forward to corresponding address
 def checkProcessingOrders():
 
-    while true:
+    while True:
 
         #print "Checking processing orders"
         tradeHistory = poloniexAcc.returnTradeHistory("BTC_ETH")
@@ -136,7 +136,7 @@ def checkProcessingOrders():
         for trades in tradeHistory:
 
             orderNum = trades["orderNumber"]
-            fee = trades["fee"]  # fees in btc
+            # fee = trades["fee"]  # fees in btc
             ethAmount = trades["amount"]
             btcAmount = trades["total"]
 
@@ -146,8 +146,9 @@ def checkProcessingOrders():
             if str(orderNum) in processingTrades.db:
                 depositID = processingTrades.get(str(orderNum))
                 logging.info("Order number finished: " + orderNum + " "
-                	+ str(ethAmount) + " ether traded for " + str(btcAmount)
-                	+ " BTC. depositID: " + depositID)
+                             + str(ethAmount) + " ether traded for "
+                             + str(btcAmount) + " BTC. depositID: "
+                             + depositID)
                 processingTrades.rem(str(orderNum))
                 processingDeposits.rem(depositID)
 
@@ -180,8 +181,9 @@ while True:
 
     depositHistory = poloniexAcc.returnDepositsWithdrawals({"start": 0, "end": currTime})["deposits"]
     while (depositHistory == prevDepositHistory):
+        # Wait until there are new deposits to process
         depositHistory = poloniexAcc.returnDepositsWithdrawals({"start": 0, "end": currTime})["deposits"]
-        sleep(1)
+        time.sleep(1)
 
     #For deposits not already traded
     for deposit in depositHistory:
@@ -190,9 +192,7 @@ while True:
         if deposit["status"] == "COMPLETE" and deposit["currency"] == "ETH":
             dbLock.acquire()
             if not processingDeposits.get(depositId) and not processedDeposits.get(depositId):
-                Thread.new {
-                    processDeposit(deposit)
-                }
+                processDeposit(deposit) # TODO create thread threading.Thread(target=deposit,args=)
             dbLock.release()
 
     #checkProcessingOrders()

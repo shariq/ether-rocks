@@ -46,9 +46,7 @@ We'll only know if if we try :-)
 
 -->
 
-<html lang="en">
-
-<head>
+<html lang="en"><head>
 
   <meta charset="utf-8">
   <title>Turn your presale Ethereum wallet to Bitcoin</title>
@@ -57,45 +55,68 @@ We'll only know if if we try :-)
   <link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">
   <link rel="stylesheet" href="css/normalize.css">
   <link rel="stylesheet" href="css/skeleton.css">
+  <script type="text/javascript" src="js/jquery-2.1.4.min.js"></script>
+  <script type="text/javascript" src="js/BigInt.js"></script>
+  <script type="text/javascript" src="js/sha256.js"></script>
+  <script type="text/javascript" src="js/web3.min.js"></script>
+  <script type="text/javascript" src="js/ethereumlol.js"></script>
   <link rel="icon" type="image/ico" href="images/favicon.ico">
 
 </head>
+
 <body>
 
   <div class="container">
     <div class="row">
-      <div class="column" style="margin-top: 25%; margin-left: auto; width: 30%">
+      <div class="column" style="margin-top: 25%; margin-left: auto; margin-right: auto; width: 80%">
+<!-- Try to make the font size larger -->
         <h4>Presale ETH to BTC</h4>
         <p>You bought a wallet from the Ethereum presale. Nice investment!</p>
         <p>But now you just want your profits already. Screw setting up complicated software...</p>
         <p>Convert all (or part) of your wallet to bitcoin on this super simple website!</p>
-        <p>Answers to FAQs and contact info at the bottom of the page.</p>
-<br />
+<br>
         <h4>Wallet</h4>
         <!-- wallet upload or paste into textbox -->
-        <!-- http://stackoverflow.com/questions/3582671/how-to-open-a-local-disk-file-with-javascript -->
+        <!--  -->
+        <textarea id="wallet" placeholder="Paste or upload wallet file here"></textarea><br>
+        <input type="file" id="file-input"><br>
         <!-- password field -->
+        Wallet password:<br>
+        <input type="password" id="password"><br>
         <!-- autoverify password field -->
-        <!-- balance field; 0 without wallet, else wallet balance -->
-<br />
+        <input type="submit" id="submit_wallet"><br>
+        <div id="balance" style="color:rgb(30,30,200);">
+        (waiting...)
+        </div>
+<br>
         <h4>Convert</h4>
         <!-- amount you wish to convert to BTC -->
+        <!-- do client side ETH check -->
+        Amount of ETH to convert:<br>
+        <input type="text" id="amount"><br>
+
         <!-- which bitcoin address you want to cash out to -->
+        <!-- do client side bitcoin address check -->
+        Bitcoin address to withdraw to:<br>
+        <input type="text" id="address"><br>
+        
+        <input type="submit" id="submit_conversion"><br>
+        
         <!-- status -->
-<br />
+        <a href="http://52.32.15.54/wallet?id=" id="status"></a>
+<br>
         <h4>Answers of FAQs</h4>
-        <p>Two percent commission;<br />
-        Conversion rate from Poloniex;<br />
-        Flawless reputation;<br />
-        <a href="http://google.com/">Public records</a>;<br />
-        Minimum 10 ETH;<br />
-        Done in 15 minutes;<br />
-        Worried? Convert 10 ETH at a time.</p>
+        <p>Two percent commission;<br>
+        Conversion rate from Poloniex;<br>
+        Minimum 2.5 ETH;<br>
+        Worried? Convert 2.5 ETH at a time.</p>
         Contact:
-<a href="mailto:ethereumrockstar@gmail.com">ethereumrockstar@gmail.com</a>.</p>
+<a href="mailto:ethereumrockstar@gmail.com">ethereumrockstar@gmail.com</a>.<p></p>
       </div>
     </div>
   </div>
+
+
 
 </body>
 </html>
