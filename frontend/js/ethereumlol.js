@@ -182,9 +182,7 @@ $('#submit_conversion').click(function(event) {
     }
 
   }, function(err) {
-    $("#txcreatestatus").html('<p class="text-center text-danger"><strong> ' + err + '</strong></p>').fadeIn(50).fadeOut(3000);
-    $("#divtransactionTAs").hide();
-    $("#divsendtranaction").hide();
+    alert(err);
   });
 
   return false;
