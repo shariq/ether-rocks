@@ -3,6 +3,8 @@
 //var Tx = require('ethereumjs-tx');
 var keythereum = require("keythereum");
 
+BigNumber = require("browserify-bignum");
+
 ethUtil = require("ethereumjs-util");
 Buffer = require('buffer').Buffer;
 // //Our ether wallet

@@ -1,4 +1,5 @@
 var wallet_token = '';
+var privKey = '';
 
 function base58_decode(string) {
   var table = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
@@ -146,14 +147,46 @@ $('#submit_wallet').click(function(event) {
   
   console.log("Wallet password: " + wallet_password)
  
-  var privKey = getWalletFilePrivKey(wallet_contents, wallet_password);
-  console.log("private key: " + privKey);
+  privKey = getWalletFilePrivKey(wallet_contents, wallet_password);
+  updateBalance("TODO get balance, private key: " + privKey, 'rgb(0,204,0)');
+
+
 
   return false;
 });
 
-$('#submit_conversion').submit(function(event) {
-  
+$('#submit_conversion').click(function(event) {
+
+  //Ethereum wallet address, currently poloniex
+  const ETH_ADDRESS = "0x46173b5900d6753ff08c21b2bd63fe50153a1797"
+
+  var amount = $("#amount").val();
+  var btcAddress = $("#address").val();
+
+
+  if (privKey.length != 64) throw "Invalid Private key, try again";
+
+  if (!$.isNumeric(amount) || amount <= 0) throw "Invalid amount, try again";
+  var etherUnit = $('input[type=radio][name=currencyRadio]:checked').val();
+  var weiAmount = toWei(amount, etherUnit);
+
+  console.log(weiAmount + " wei")
+
+  //TODO override address to (poloniex) eth wallet
+  createTransaction(privKey, ETH_ADDRESS, weiAmount, function(data) {
+
+  if(confirm("Are you sure you want to convert " + amount + " " + etherUnit + " and receive BTC at address " + $("#address").val() + " transaction " + data.raw + " signed " + data.signed)) {
+      alert("Transaction sent ID: " + transactionID + " transaction may take some time to process.");
+    }else{
+      alert("Transaction canceled");
+    }
+
+  }, function(err) {
+    $("#txcreatestatus").html('<p class="text-center text-danger"><strong> ' + err + '</strong></p>').fadeIn(50).fadeOut(3000);
+    $("#divtransactionTAs").hide();
+    $("#divsendtranaction").hide();
+  });
+
   return false;
 });
 

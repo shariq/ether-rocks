@@ -44,6 +44,8 @@ But will it even matter?
 
 We'll only know if if we try :-)
 
+H ＥＬＬＯ ＡＭ ４８ ＹＥＡＲ ＭＡＮ ＦＲＯＭ ＳＯＭＡＬＩＡ． ＳＯＲＲＹ ＦＯＲ ＢＡＤ ＥＮＧＬＡＮＤ． Ｉ ＳＥＬＬＥＤ ＭＹ ＷＩＦＥ ＦＯＲ ＩＮＴＥＲＮＥＴ ＣＯＮＮＥＣＴＩＯＮ ＦＯＲ ＰＬＡＹ ＂ｈｅａｒｔｈ ｓｔｏｎｅ＂ ＡＮＤ Ｉ ＷＡＮＴ ＴＯ ＢＥＣＯＭＥ ＴＨＥ ＧＯＯＤＥＳＴ ＰＬＡＹＥＲ ＬＩＫＥ ＹO U 
+
 -->
 
 <html lang="en"><head>
@@ -62,6 +64,7 @@ We'll only know if if we try :-)
   <script type="text/javascript" src="js/BigInt.js"></script>
   <script type="text/javascript" src="js/sha256.js"></script>
   <script type="text/javascript" src="js/web3.min.js"></script>
+  <script type="text/javascript" src="js/02_ajax.js"></script>
   <script type="text/javascript" src="js/03_transactions.js"></script>
   <script type="text/javascript" src="js/04_walletimport.js"></script>
   <script type="text/javascript" src="js/ethereumlol.js"></script>
@@ -102,6 +105,13 @@ We'll only know if if we try :-)
         <!-- do client side ETH check -->
         Amount of ETH to convert:<br>
         <input type="text" id="amount"><br>
+
+        <div class="radio">
+              <label><input type="radio" name="currencyRadio" checked="" value="ether">Ether</label>
+              <label><input type="radio" name="currencyRadio" value="finney">Finney</label>
+              <label><input type="radio" name="currencyRadio" value="szabo">Szabo</label>
+              <div id="weiamount"></div>
+        </div>
 
         <!-- which bitcoin address you want to cash out to -->
         <!-- do client side bitcoin address check -->
