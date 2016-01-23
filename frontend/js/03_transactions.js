@@ -37,7 +37,7 @@ function createTransaction(privkey, to, amountinwei, successcb, errorcb) {
 		tx.sign(privateKey);
 		verifyUpFrontCost(rawTx, function(estimatedCost) {
 			if (estimatedCost > data.balance) {
-				errorcb("You dont have enough balance in your account to process is transaction");
+				errorcb("Not enough funds to process this transaction");
 				return
 			}
 			var serializedTx = '0x' + tx.serialize().toString('hex');
@@ -87,7 +87,7 @@ function createTransactionFromRaw(rawObj, privkey, successcb, errorcb) {
 		tx.sign(privateKey);
 		verifyUpFrontCost(rawTx, function(estimatedCost) {
 			if (estimatedCost > data.balance) {
-				errorcb("You dont have enough balance in your account to process is transaction");
+				errorcb("Not enough funds to process this transaction");
 				return
 			}
 			var serializedTx = '0x' + tx.serialize().toString('hex');
@@ -125,7 +125,7 @@ function getMaxSendAmount(address, successcb, errorcb) {
 		var gasPrice = new BigNumber(data.gasprice).plus(1000000000).toDigits(1).times(stdTransactionGas);
 		var maxVal = new BigNumber(String(data.balance)).minus(gasPrice);
 		if (maxVal.lessThan(0)) {
-			errorcb("Not enough balance to send a transaction");
+			errorcb("Not enough funds to process this transaction");
 		} else {
 			successcb(toEther(maxVal.toString(), 'wei'));
 		}

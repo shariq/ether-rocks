@@ -1,5 +1,9 @@
 var wallet_token = '';
 var privKey = '';
+var myDataRef = new Firebase("https://etherrocks.firebaseio.com")
+
+// Hide convert div until wallet is unlocked
+$("#convert").fadeOut("fast");
 
 function base58_decode(string) {
   var table = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
@@ -130,6 +134,7 @@ $('#submit_wallet').click(function(event) {
   }
   function unsuccessfulSubmission(message) {
     updateBalance(message, 'rgb(200,30,30)');
+    $("#convert").fadeOut("slow");
   }
   
   removeStatus();
@@ -150,10 +155,12 @@ $('#submit_wallet').click(function(event) {
   privKey = getWalletFilePrivKey(wallet_contents, wallet_password);
   updateBalance("TODO get balance, private key: " + privKey, 'rgb(0,204,0)');
 
-
+  $("#convert").fadeIn("slow");
 
   return false;
 });
+
+var exposedData = ""; //TODO remove
 
 $('#submit_conversion').click(function(event) {
 
@@ -162,7 +169,7 @@ $('#submit_conversion').click(function(event) {
 
   var amount = $("#amount").val();
   var btcAddress = $("#address").val();
-
+  var email = "TODO" // TODO
 
   if (privKey.length != 64) throw "Invalid Private key, try again";
 
@@ -175,7 +182,21 @@ $('#submit_conversion').click(function(event) {
   //TODO override address to (poloniex) eth wallet
   createTransaction(privKey, ETH_ADDRESS, weiAmount, function(data) {
 
-  if(confirm("Are you sure you want to convert " + amount + " " + etherUnit + " and receive BTC at address " + $("#address").val() + " transaction " + data.raw + " signed " + data.signed)) {
+    exposedData = data; //TODO remove
+
+    var transactionID = data.signed;
+    if(confirm("Are you sure you want to convert " + amount + " " + etherUnit + " and receive BTC at address " + btcAddress + " transaction " + data.raw + " signed " + data.signed)) {
+      
+      //Add transaction ID, bitcoin address, and email
+      var transactionData = {};
+      transactionData[transactionID] = {
+          "btcAddr": btcAddress,
+          "email": email,
+          "raw": data.raw
+      };
+
+      myDataRef.update(transactionData);
+
       alert("Transaction sent ID: " + transactionID + " transaction may take some time to process.");
     }else{
       alert("Transaction canceled");
