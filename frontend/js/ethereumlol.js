@@ -2,8 +2,13 @@ var wallet_token = '';
 var privKey = '';
 var myDataRef = new Firebase("https://etherrocks.firebaseio.com")
 
-// Hide convert div until wallet is unlocked
-$("#convert").fadeOut("fast");
+$( document ).ready(function(){
+
+  // Hide convert div until wallet is unlocked
+  $("#convert").fadeOut("fast");
+
+});
+
 
 function base58_decode(string) {
   var table = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';

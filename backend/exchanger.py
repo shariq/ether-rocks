@@ -2,6 +2,8 @@ from poloniex import poloniex
 import time, pickledb, threading, json, logging, sys
 from threading import Thread, Lock
 
+
+
 COMMISION = 0.03
 
 logging.basicConfig(filename='exchanger.log', level=logging.INFO)
