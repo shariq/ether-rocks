@@ -1,11 +1,14 @@
 # exchanger rewite
 from poloniex import poloniex
-import time, pickledb, threading, json, logging, sys
+import time, threading, json, logging, sys, functools
 from firebase import firebase
 import subprocess
 from subprocess import call
+from tinydb import TinyDB, Query
 
 firebase = firebase.FirebaseApplication("https://etherrocks.firebaseio.com", None)
+
+#TODO create another firebase db for backup of already posted transactions
 
 root = logging.getLogger()
 root.setLevel(logging.DEBUG)
@@ -25,17 +28,6 @@ root.setLevel(logging.DEBUG)
 
 logging.basicConfig(filename='exchanger.log', level=logging.INFO)
 
-def forever(func, seconds=1):
-    def helper():
-        while True:
-            try:
-                func()
-            except:
-                pass
-            time.sleep(seconds)
-    t = threading.Thread(target=helper)
-    t.daemon = True
-    t.start()
 
 COMMISION = 0.03
 
@@ -45,36 +37,31 @@ COMMISION = 0.03
 # got this number from these threads:
 # https://www.reddit.com/r/ethtrader/comments/3g8eei/how_long_does_it_take_to_deposit_coins_on_poloniex/
 # https://forum.ethereum.org/discussion/2835/how-do-i-check-number-of-confirmations-of-one-transactions
-MIN_CONFIRMATIONS = 6000
-MIN_TIME = 600
+# Scratch that a mod from poloniex said 500 confirms or a couple hours
+MIN_CONFIRMATIONS = 500
+MIN_TIME = 3600 # TODO consider using this later
 
 logging.basicConfig(filename='exchanger.log', level=logging.INFO)
 
 # Transactions that have finished posting
-postedTransactions = pickledb.load('postedTransactions.db', False)
-forever(postedTransactions.dump)
+postedTransactions = TinyDB('postedTransactions.db')
 
 # Transactions that are still posted or finished posting
-postingTransactions = pickledb.load('postingTransactions.db', False)
-forever(postingTransactions.dump)
+postingTransactions = TinyDB('postingTransactions.db')
 
 # Transactions that haven't been exchanged for bitcoins
-exchangingTransactions = pickledb.load('exchangingTransactions.db', False)
-forever(exchangingTransactions.dump)
+exchangingTransactions = TinyDB('exchangingTransactions.db')
 
+transactions = TinyDB('transactions.db')
+failedTransactions = TinyDB('failedTransactions.db')
 
 #Send a user bitcoins minus commision
 def sendUserBTC(tradeAmount, btcAddr):
-
-    #Take off commision from actual trade amount
-    profit = float(tradeAmount) * COMMISION
-    usersAmount = float(tradeAmount) - profit
 
     response = poloniexAcc.withdraw("BTC", usersAmount, btcAddr)
 
     if response and "error" not in response:
         logging.info("Successfully transfered " + str(usersAmount) + " bitcoins to: " + btcAddr)
-        logging.info("Actual trade amount: " + str(tradeAmount) + " profit: " + str(profit))
         return True
     else:
         errMsg = "Could not transfer " + str(usersAmount) + " bitcoins to: " + btcAddr
@@ -85,7 +72,9 @@ def sendUserBTC(tradeAmount, btcAddr):
 
         return False
 
-
+def add_if_not_in_set(l, s, itt):
+    if itt not in s:
+        l.append(itt)
 
 # Post transactions to ether network
 # TODO verify transaction destination, amount
@@ -94,50 +83,76 @@ def postEthTransactions():
         firebaseTable = firebase.get('/', None)
         signedEtherTrans = set(firebaseTable.keys())
 
+        postedEtherTrans = set(map((lambda s: s['signedTrans']), transactions.all()))
+
+        # If not in postedEtherTrans the transaction must have already been set
+        unpostedSignedTrans = filter(functools.partial(add_if_not_in_set, postedEtherTrans), signedEtherTrans) 
+
+        # TODO delete debug
+        print "postedEtherTrans: " + str(postedEtherTrans)
+        print "unpostedSignedTrans: " + str(unpostedSignedTrans)
+
         # Get signed Eth transactions that have not been posted to the network
-        for signedEtherTran in (signedEtherTrans
-                                - set(postingTransactions.getall())):
+        for signedEtherTran in unpostedSignedTrans:
             transactionScript = "eth.sendRawTransaction(\"" + signedEtherTran + "\");"
             logging.info("sending eth command " + transactionScript)
 
             transactionID = subprocess.call(["geth", "--exec", transactionScript, "attach"])
-    
-            if "error" in str(transactionID):
+
+            valueScript = "eth.getTransaction(\"" + transactionID + "\").value;"
+            value = subprocess.call("geth", "--exec", valueScript, "attach"])
+
+            if "error" in str(transactionID) or "Error" in str(value):
+                #TODO handle failed transactions gracefully
                 logging.warn("transaction for signedEtherTrans " + signedEtherTran + " failed")
-                print "error"
+                if "Error" in str(value):
+                    logging.warn("Due to value error: " + str(value))
+                print "error"  # TODO delete debug
                 continue
 
             logging.info("TransactionID:" + str(transactionID))
-            postingTransactions.set(signedEtherTran, transactionID)
+            transactions.insert({"signedTrans": signedEtherTran, "txid":transactionID, "status":"confirming", "value": value, "postedAt": time.time()})
 
 
 
-# Wait until 200 confirmations on ether transactions. When done put in postedTransactions
+# Wait until a certain number of confirmations on ether transactions. 
 def checkConfirmations():
     # signedEtherTrans = firebase.get('/', None)
     while True:
-        for signedTran in (set(postingTransactions.getall())
-                            - set(postedTransactions.getall())):
-            transID = processingTransactions.get(signedTran)
-            # web3.eth.blockNumber-web3.eth.getTransaction(transaction).blockNumber
-            confirmationScript = "web3.eth.blockNumber-web3.eth.getTransaction(\"" + transaction + "\").blockNumber;"
+        # Wait at least an hour on transactions (since we expect the required number of confirmations to take several hours)
+        for transEntry in db.search((Query().status == 'confirming') & (Query().postedAt + MIN_TIME <= time.time())):
+
+            transID = transEntry["txid"]
+
+            # TODO delete this comment web3.eth.blockNumber-web3.eth.getTransaction(transaction).blockNumber
+            confirmationScript = "web3.eth.blockNumber-web3.eth.getTransaction(\"" + transID + "\").blockNumber;"
             confirmations = subprocess.call(["geth", "--exec", confirmationScript, "attach"])
 
             if confirmations >= MIN_CONFIRMATIONS:
                 print "TODO ether transaction has >= " + str(MIN_CONFIRMATIONS) + " confirmations send user bitcoins"
-                postedTransactions.set(signedTran, transID)
-                exchangingTransactions.set(transID, time.time())
+                transactions.update({'status':'confirmed'}, Query().txid == transID)
+
 
 
 
 def exhangeForBitcoin():
     while True:
-        for transID in exchangingTransactions:
-            if time.time() > exchangingTransactions.get(transID) + MIN_TIME:
-                userSentBTC = sendUserBTC
-                #TODO attempt to post bitcoin transaction
-                if userSentBTC:
-                    exchangingTransactions.rem(transID)
+        #TODO do query
+        for transEntry in db.search((Query().status == 'confirmed')
+            transID = transEntry["txid"]
+            ether = transEntry["value"]
+            #TODO figure out rate of bitcoin per ethereum from most recent trade
+            btcPerEth = #TODO
+
+
+            #Take off commision from actual trade amount
+            profit = float(btcAmount) * COMMISION
+            usersAmount = float(btcAmount) - profit
+
+            userSentBTC = sendUserBTC()
+            #TODO attempt to post bitcoin transaction
+            if userSentBTC:
+                transactions.update({'status':'complete'}, Query().txid == transID)
 
 
 
